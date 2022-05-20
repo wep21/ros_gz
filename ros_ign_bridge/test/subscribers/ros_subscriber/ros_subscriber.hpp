@@ -50,6 +50,7 @@ public:
   {
     ros_ign_bridge::testing::compareTestMsg(std::make_shared<ROS_T>(_msg));
     this->callbackExecuted = true;
+    this->sub = nullptr;
   }
 
   /// \brief Member variables that flag when the actions are executed.

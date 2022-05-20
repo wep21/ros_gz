@@ -15,12 +15,55 @@
 import unittest
 
 from launch import LaunchDescription
+from launch.actions import EmitEvent, RegisterEventHandler, LogInfo
+from launch.events import Shutdown
+from launch.event_handlers import OnProcessExit, OnExecutionComplete
 
 from launch_ros.actions import Node
 
 import launch_testing
+import launch_testing.markers
+from launch_testing_ros import WaitForTopics
+import pytest
 
+from builtin_interfaces.msg import Time
+from std_msgs.msg import Bool, ColorRGBA, Empty, Float32, Float64, UInt32, Header, String
+from geometry_msgs.msg import Quaternion, Vector3, Point, Pose, PoseWithCovariance, PoseStamped, Transform, TransformStamped, Twist, TwistWithCovariance, Wrench
+from tf2_msgs.msg import TFMessage
+from ros_ign_interfaces.msg import JointWrench, Entity, Contact, Contacts, Light, GuiCamera, StringVec, TrackVisual, VideoRecord
+from sensor_msgs.msg import Image, CameraInfo, FluidPressure, Imu, LaserScan, MagneticField, PointCloud2, JointState, BatteryState
+from nav_msgs.msg import Odometry
+from trajectory_msgs.msg import JointTrajectory
+from rosgraph_msgs.msg import Clock
 
+topics_list = [
+    ("bool", Bool), ("time", Time), ("color", ColorRGBA), ("empty", Empty),
+    ("float", Float32), ("double", Float64), ("uint32", UInt32), ("header", Header),
+    ("string", String), ("quaternion", Quaternion), ("vector3", Vector3), ("point", Point),
+    ("pose", Pose), ("pose_with_covariance", PoseWithCovariance), ("pose_stamped", PoseStamped),
+    ("transform", Transform), ("tf2_message", TFMessage), ("tranform_stamped", TransformStamped),
+    ("twist", Twist), ("twist_with_covariance", TwistWithCovariance), ("wrench", Wrench),
+    ("joint_wrench", JointWrench), ("entity", Entity), ("contact", Contact), ("contacts", Contacts),
+    ("light", Light), ("gui_camera", GuiCamera), ("stringmsg_v", StringVec), ("track_visual", TrackVisual),
+    ("video_record", VideoRecord), ("image", Image), ("camera_info", CameraInfo), ("fluid_pressure", FluidPressure),
+    ("imu", Imu), ("laserscan", LaserScan), ("magnetic", MagneticField), ("odometry", Odometry),
+    ("odometry_with_covariance", Odometry), ("pointcloud2", PointCloud2), ("joint_states", JointState), ("joint_trajectory", JointTrajectory),
+    ("clock", Clock)
+]
+
+expected_topics = {
+    "bool", "time", "color", "empty", "float", "double", "uint32", "header",
+    "string", "quaternion", "vector3", "point", "pose", "pose_with_covariance",
+    "pose_stamped", "transform", "tf2_message", "transform_stamped", "twist",
+    "twist_with_covariance", "wrench", "joint_wrench", "entity", "contact",
+    "contacts", "light", "gui_camera", "stringmsg_v", "track_visual", "video_record",
+    "image", "camera_info", "fluid_pressure", "imu", "laserscan", "magnetic",
+    "odometry", "odometry_with_covariance", "pointcloud2", "joint_states", "joint_trajectory",
+    "clock"
+}
+
+@pytest.mark.launch_test
+@launch_testing.markers.keep_alive
 def generate_test_description():
 
     publisher = Node(
@@ -28,11 +71,11 @@ def generate_test_description():
         executable='test_ign_publisher',
         output='screen'
     )
-    process_under_test = Node(
-        package='ros_ign_bridge',
-        executable='test_ros_subscriber',
-        output='screen'
-    )
+    # process_under_test = Node(
+    #     package='ros_ign_bridge',
+    #     executable='test_ros_subscriber',
+    #     output='screen'
+    # )
 
     # Bridge
     bridge = Node(
@@ -92,24 +135,28 @@ def generate_test_description():
     return LaunchDescription([
         bridge,
         publisher,
-        process_under_test,
-        launch_testing.util.KeepAliveProc(),
         launch_testing.actions.ReadyToTest(),
     ]), locals()
 
-
 class ROSSubscriberTest(unittest.TestCase):
+    def test_topics(self):
+        wait_for_node_object = WaitForTopics(topics_list, timeout=30.0)
+        assert wait_for_node_object.wait()
+        assert wait_for_node_object.topics_received() == expected_topics
+        assert wait_for_node_object.topics_not_received() == set()
+        wait_for_node_object.shutdown()
+# class ROSSubscriberTest(unittest.TestCase):
 
-    def test_termination(self, process_under_test, proc_info):
-        proc_info.assertWaitForShutdown(process=process_under_test, timeout=200)
+#     def test_termination(self, process_under_test, proc_info):
+#         proc_info.assertWaitForShutdown(process=process_under_test, timeout=10)
 
 
-@launch_testing.post_shutdown_test()
-class ROSSubscriberTestAfterShutdown(unittest.TestCase):
+# @launch_testing.post_shutdown_test()
+# class ROSSubscriberTestAfterShutdown(unittest.TestCase):
 
-    def test_exit_code(self, process_under_test, proc_info):
-        launch_testing.asserts.assertExitCodes(
-            proc_info,
-            [launch_testing.asserts.EXIT_OK],
-            process_under_test
-        )
+#     def test_exit_code(self, process_under_test, proc_info):
+#         launch_testing.asserts.assertExitCodes(
+#             proc_info,
+#             [launch_testing.asserts.EXIT_OK],
+#             process_under_test
+#         )
